@@ -1,0 +1,13 @@
+# Core app
+streamlit>=1.30,<2
+
+# Data + scientific computing
+numpy>=1.24,<3
+pandas>=2,<3
+scipy>=1.10,<2
+
+# Plotting
+matplotlib>=3.7,<4
+
+# Audio I/O
+soundfile>=0.12,<1
