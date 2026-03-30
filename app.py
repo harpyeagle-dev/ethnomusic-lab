@@ -1,8 +1,7 @@
 import streamlit as st
 import numpy as np
-import librosa
-import librosa.display
 import matplotlib.pyplot as plt
+import soundfile as sf
 import pandas as pd
 
 st.set_page_config(page_title="EthnoMusic Cognitive Lab", layout="wide")
@@ -10,20 +9,41 @@ st.set_page_config(page_title="EthnoMusic Cognitive Lab", layout="wide")
 st.title("🧠 EthnoMusic Lab: Cognitive Interpretation System")
 
 # =========================
+# CULTURE SELECTOR
+# =========================
+st.sidebar.header("🌍 Cultural Context")
+
+culture = st.sidebar.selectbox(
+    "Select Cultural Model",
+    ["Neutral", "Indigenous (Baboon Dance)", "Afro-Caribbean", "Western Classical"]
+)
+
+# =========================
 # AUDIO UPLOAD
 # =========================
-uploaded_file = st.file_uploader("Upload an audio file", type=["wav", "mp3"])
+uploaded_file = st.file_uploader("Upload Audio File", type=["wav", "mp3"])
 
 if uploaded_file is not None:
-    
-    # Load audio
-    y, sr = librosa.load(uploaded_file, sr=None)
-    
+
+    # =========================
+    # LOAD AUDIO
+    # =========================
+    y, sr = sf.read(uploaded_file)
+
+    # Convert to mono
+    if len(y.shape) > 1:
+        y = np.mean(y, axis=1)
+
     st.audio(uploaded_file)
 
+    # =========================
+    # WAVEFORM
+    # =========================
     st.subheader("🔊 Waveform")
+
     fig, ax = plt.subplots()
-    librosa.display.waveshow(y, sr=sr, ax=ax)
+    ax.plot(y)
+    ax.set_title("Waveform")
     st.pyplot(fig)
 
     # =========================
@@ -31,37 +51,42 @@ if uploaded_file is not None:
     # =========================
     st.subheader("🎛️ MIR Feature Extraction")
 
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    rms = np.mean(librosa.feature.rms(y=y))
-    spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
-    spectral_bandwidth = np.mean(librosa.feature.spectral_bandwidth(y=y, sr=sr))
-    zero_crossing = np.mean(librosa.feature.zero_crossing_rate(y))
-    
-    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
-    rhythmic_variance = np.var(onset_env)
+    duration = len(y) / sr
+
+    # Energy (RMS)
+    rms = np.sqrt(np.mean(y**2))
+
+    # Zero Crossing Rate (roughness)
+    zcr = np.mean(np.abs(np.diff(np.sign(y))))
+
+    # Spectral centroid (brightness)
+    spectrum = np.abs(np.fft.fft(y))
+    freqs = np.fft.fftfreq(len(spectrum), 1/sr)
+    spectral_centroid = np.sum(freqs * spectrum) / (np.sum(spectrum) + 1e-6)
+
+    # Tempo (very rough proxy)
+    tempo = 60 / duration if duration > 0 else 0
 
     features = {
-        "tempo": tempo,
-        "rms": rms,
-        "brightness": spectral_centroid,
-        "tension": spectral_bandwidth,
-        "roughness": zero_crossing,
-        "rhythmic_variance": rhythmic_variance
+        "Tempo": tempo,
+        "Energy (RMS)": rms,
+        "Brightness": spectral_centroid,
+        "Roughness": zcr
     }
 
     st.write(features)
 
     # =========================
-    # PERCEPTUAL MAPPING (BRAIN LAYER)
+    # PERCEPTUAL MAPPING
     # =========================
     st.subheader("🧠 Cognitive Interpretation")
 
     def interpret(features):
-        energy = (features["tempo"] * 0.3) + (features["rms"] * 100)
-        brightness = features["brightness"] / 1000
-        tension = features["tension"] / 1000
-        stability = 1 / (features["rhythmic_variance"] + 0.01)
-        groove = features["tempo"] * (1 - features["rhythmic_variance"])
+        energy = features["Tempo"] * 0.3 + features["Energy (RMS)"] * 100
+        brightness = features["Brightness"] / 1000
+        tension = features["Roughness"] * 10
+        stability = 1 / (tension + 0.1)
+        groove = energy * stability
 
         return {
             "Energy": energy,
@@ -72,40 +97,65 @@ if uploaded_file is not None:
         }
 
     perception = interpret(features)
+
+    # =========================
+    # CULTURAL MODIFIER
+    # =========================
+    def apply_culture(p, culture):
+        if culture == "Indigenous (Baboon Dance)":
+            p["Groove"] *= 1.5
+            p["Energy"] *= 1.2
+        elif culture == "Afro-Caribbean":
+            p["Groove"] *= 1.4
+        elif culture == "Western Classical":
+            p["Tension"] *= 1.3
+        return p
+
+    perception = apply_culture(perception, culture)
+
     st.write(perception)
 
     # =========================
     # RADAR CHART
     # =========================
-    st.subheader("📊 Perceptual Radar")
+    st.subheader("📊 Perceptual Profile")
 
     labels = list(perception.keys())
     values = list(perception.values())
 
-    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+    angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
     values += values[:1]
     angles += angles[:1]
 
     fig2, ax2 = plt.subplots(subplot_kw=dict(polar=True))
     ax2.plot(angles, values)
-    ax2.fill(angles, values, alpha=0.3)
+    ax2.fill(angles, values, alpha=0.25)
     ax2.set_xticks(angles[:-1])
     ax2.set_xticklabels(labels)
 
     st.pyplot(fig2)
 
     # =========================
-    # EMOTIONAL TIMELINE
+    # ENERGY OVER TIME
     # =========================
     st.subheader("🌊 Energy Over Time")
 
-    rms_frame = librosa.feature.rms(y=y)[0]
-    times = librosa.frames_to_time(range(len(rms_frame)), sr=sr)
+    frame_size = 1024
+    hop = 512
+
+    rms_frames = []
+    times = []
+
+    for i in range(0, len(y) - frame_size, hop):
+        frame = y[i:i+frame_size]
+        rms_frames.append(np.sqrt(np.mean(frame**2)))
+        times.append(i / sr)
 
     fig3, ax3 = plt.subplots()
-    ax3.plot(times, rms_frame)
+    ax3.plot(times, rms_frames)
     ax3.set_xlabel("Time (s)")
-    ax3.set_ylabel("Energy (RMS)")
+    ax3.set_ylabel("Energy")
+
     st.pyplot(fig3)
 
     # =========================
@@ -113,27 +163,17 @@ if uploaded_file is not None:
     # =========================
     st.subheader("📝 Cognitive Summary")
 
-    def generate_text(p):
-        if p["Energy"] > 50:
-            energy_desc = "high energy and strong activation"
-        else:
-            energy_desc = "moderate to low energy"
-
-        if p["Stability"] > 10:
-            rhythm_desc = "high rhythmic stability"
-        else:
-            rhythm_desc = "variable rhythmic structure"
-
-        if p["Tension"] > 2:
-            tension_desc = "increased tension and complexity"
-        else:
-            tension_desc = "relatively low tension"
+    def generate_text(p, culture):
+        energy_desc = "high energy" if p["Energy"] > 50 else "moderate energy"
+        groove_desc = "strong groove" if p["Groove"] > 20 else "low groove"
+        tension_desc = "high tension" if p["Tension"] > 1 else "low tension"
 
         return f"""
-        This piece exhibits {energy_desc}, suggesting strong motor engagement. 
-        The rhythm shows {rhythm_desc}, indicating how predictable or syncopated the structure is. 
-        The timbral qualities reflect {tension_desc}, shaping emotional intensity. 
-        Overall, the piece can be cognitively interpreted as a {'dance-driven' if p['Groove'] > 20 else 'reflective'} musical experience.
+        This piece exhibits {energy_desc}, suggesting active listener engagement.
+        The rhythmic structure produces a {groove_desc}, indicating movement or dance potential.
+        The timbral qualities reflect {tension_desc}, shaping emotional intensity.
+        Within the {culture} framework, the piece can be interpreted as a 
+        {'ritualistic' if p['Groove'] > 20 else 'reflective'} musical experience.
         """
 
-    st.write(generate_text(perception))
+    st.write(generate_text(perception, culture))
