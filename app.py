@@ -1,4 +1,13 @@
-import streamlit as st
+import requests
+from io import BytesIO
+
+query_params = st.query_params
+
+audio_url = query_params.get("audio", None)
+
+if audio_url:
+    response = requests.get(audio_url)
+    uploaded_file = BytesIO(response.content)import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import soundfile as sf
