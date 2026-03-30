@@ -30,7 +30,7 @@ culture = st.sidebar.selectbox(
 # =========================
 # AUDIO UPLOAD
 # =========================
-uploaded_file = st.file_uploader("Upload Audio File", type=["wav", "mp3"])
+uploaded_file = st.file_uploader("Upload Audio", type=["wav","mp3"]) if not audio_url else uploaded_file
 
 if uploaded_file is not None:
 
