@@ -89,11 +89,11 @@ except:
 except Exception as e:
     print("Audio processing error:", e)
 
-        spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
-        brightness_val = float(np.mean(spectral_centroid))
+    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
+    brightness_val = float(np.mean(spectral_centroid))
 
-        rms = librosa.feature.rms(y=y)
-        energy_val = float(np.mean(rms)) * 1000
+    rms = librosa.feature.rms(y=y)
+    energy_val = float(np.mean(rms)) * 1000
 
 except Exception as e:
     st.error(f"Feature extraction failed: {e}")
