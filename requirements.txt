@@ -10,4 +10,5 @@ scipy>=1.10,<2
 matplotlib>=3.7,<4
 
 # Audio I/O
+librosa>==0.10.1
 soundfile>=0.12,<1
