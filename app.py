@@ -81,9 +81,13 @@ if uploaded_file is not None:
         st.subheader("📊 Audio Features")
         col1, col2, col3 = st.columns(3)
 
-        col1.metric("Tempo", f"{tempo:.2f} BPM")
-        col2.metric("Brightness", f"{spectral_centroid:.2f}")
-        col3.metric("Energy", f"{rms:.4f}")
+        tempo_val = float(np.mean(tempo))
+        brightness_val = float(spectral_centroid)
+        energy_val = float(rms)
+
+        col1.metric("Tempo", f"{tempo_val:.2f} BPM")
+        col2.metric("Brightness", f"{brightness_val:.2f}")
+        col3.metric("Energy", f"{energy_val:.4f}")
 
         # =========================
         # WAVEFORM
