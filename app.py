@@ -74,16 +74,25 @@ if uploaded_file is not None:
         # =========================
         # FEATURE EXTRACTION
         # =========================
-        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-        spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
-        rms = np.mean(librosa.feature.rms(y=y))
+        try:
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+    
+    if tempo is None:
+        tempo_val = 0.0
+    elif isinstance(tempo, (list, np.ndarray)):
+        tempo_val = float(np.mean(tempo)) if len(tempo) > 0 else 0.0
+    else:
+        tempo_val = float(tempo)
 
-        st.subheader("📊 Audio Features")
-        col1, col2, col3 = st.columns(3)
+    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
+    brightness_val = float(np.mean(spectral_centroid))
 
-        tempo_val = float(np.mean(tempo))
-        brightness_val = float(spectral_centroid)
-        energy_val = float(rms)
+    rms = librosa.feature.rms(y=y)
+    energy_val = float(np.mean(rms)) * 1000
+
+except Exception as e:
+    st.error(f"Feature extraction failed: {e}")
+    tempo_val, brightness_val, energy_val = 0.0, 0.0, 0.0
 
         col1.metric("Tempo", f"{tempo_val:.2f} BPM")
         col2.metric("Brightness", f"{brightness_val:.2f}")
