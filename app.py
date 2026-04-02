@@ -114,19 +114,31 @@ if uploaded_file is not None:
         # =========================
         st.subheader("🧠 Brain Interpretation View")
 
+        tempo_val = float(np.mean(tempo))
+        brightness_val = float(spectral_centroid)
+        energy_val = float(rms) * 1000
+
         brain_data = {
-            "Rhythm (Tempo)": tempo,
-            "Timbre (Brightness)": spectral_centroid,
-            "Energy": rms * 1000
-        }
+        "Rhythm (Tempo)": tempo_val,
+        "Timbre (Brightness)": brightness_val,
+        "Energy": energy_val
+}
 
-        brain_df = pd.DataFrame(list(brain_data.items()), columns=["Feature", "Value"])
+         brain_df = pd.DataFrame({
+         "Feature": list(brain_data.keys()),
+         "Value": [float(v) for v in brain_data.values()]
+})
 
-        fig3, ax3 = plt.subplots()
-        ax3.barh(brain_df["Feature"], brain_df["Value"])
-        ax3.set_title("Cognitive Audio Mapping")
-        st.pyplot(fig3)
+         fig3, ax3 = plt.subplots()
 
+         ax3.barh(
+         brain_df["Feature"].astype(str),
+         brain_df["Value"].astype(float)
+)
+
+ax3.set_title("Cognitive Audio Mapping")
+
+st.pyplot(fig3)
         # =========================
         # COMPARE WITH USER INPUT
         # =========================
