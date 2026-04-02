@@ -81,19 +81,19 @@ if uploaded_file is not None:
            print("Tempo extraction failed:", e)
            tempo_val = 0.0
 
-             spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
-             brightness_val = float(np.mean(spectral_centroid))
+           spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
+           brightness_val = float(np.mean(spectral_centroid))
 
-             rms = librosa.feature.rms(y=y)
-             energy_val = float(np.mean(rms)) * 1000
+           rms = librosa.feature.rms(y=y)
+           energy_val = float(np.mean(rms)) * 1000
 
         except Exception as e:
-             st.error(f"Feature extraction failed: {e}")
-             tempo_val, brightness_val, energy_val = 0.0, 0.0, 0.0
+           st.error(f"Feature extraction failed: {e}")
+           tempo_val, brightness_val, energy_val = 0.0, 0.0, 0.0
 
-             col1.metric("Tempo", f"{tempo_val:.2f} BPM")
-             col2.metric("Brightness", f"{brightness_val:.2f}")
-             col3.metric("Energy", f"{energy_val:.4f}")
+           col1.metric("Tempo", f"{tempo_val:.2f} BPM")
+           col2.metric("Brightness", f"{brightness_val:.2f}")
+           col3.metric("Energy", f"{energy_val:.4f}")
 
         # =========================
         # WAVEFORM
