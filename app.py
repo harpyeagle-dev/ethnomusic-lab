@@ -126,6 +126,8 @@ if uploaded_file is not None:
 # =========================
 st.subheader("🧠 Brain Interpretation View")
 
+print("Tempo:", tempo)
+print("Type:", type(tempo))
 tempo_val = float(tempo)
 brightness_val = float(spectral_centroid)
 energy_val = float(rms) * 1000
