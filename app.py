@@ -75,14 +75,11 @@ if uploaded_file is not None:
         # FEATURE EXTRACTION
         # =========================
         try:
-           tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    
-           if tempo is None:
-             tempo_val = 0.0
-           elif isinstance(tempo, (list, np.ndarray)):
-             tempo_val = float(np.mean(tempo)) if len(tempo) > 0 else 0.0
-           else:
-             tempo_val = float(tempo)
+           tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+           tempo_val = float(tempo)
+        except Exception as e:
+           print("Tempo extraction failed:", e)
+           tempo_val = 0.0
 
              spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
              brightness_val = float(np.mean(spectral_centroid))
