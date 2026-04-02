@@ -80,7 +80,7 @@ try:
    tempo = 0.0
    tempo_val = 0.0
 
-try:
+except:
     y, sr = librosa.load(uploaded_file, sr=None)
 
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
