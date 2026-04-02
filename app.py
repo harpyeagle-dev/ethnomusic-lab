@@ -77,8 +77,8 @@ if uploaded_file is not None:
         tempo = 0.0
 try:
     # ALWAYS define defaults first
-tempo = 0.0
-tempo_val = 0.0
+   tempo = 0.0
+   tempo_val = 0.0
 
 try:
     y, sr = librosa.load(uploaded_file, sr=None)
