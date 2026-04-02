@@ -78,9 +78,9 @@ if uploaded_file is not None:
            tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
     
            if tempo is None:
-           tempo_val = 0.0
-           elif isinstance(tempo, (list, np.ndarray)):
-           tempo_val = float(np.mean(tempo)) if len(tempo) > 0 else 0.0
+             tempo_val = 0.0
+             elif isinstance(tempo, (list, np.ndarray)):
+             tempo_val = float(np.mean(tempo)) if len(tempo) > 0 else 0.0
         else:
            tempo_val = float(tempo)
 
