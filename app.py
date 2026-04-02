@@ -4,18 +4,21 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Ethnomusic Lab", layout="wide")
+# =========================
+# PAGE SETUP
+# =========================
+st.set_page_config(page_title="Caribbean Sonic Humanities Lab", layout="wide")
 
-st.title("🎧 Ethnomusicology Lab")
-st.subheader("Analyze Music + Compare Human vs Machine Interpretation")
+st.title("🌴 Caribbean Sonic Humanities Lab")
+st.caption("A Cognitive Interface for Sound, Culture, and Embodied Listening")
 
 # =========================
 # FILE UPLOAD
 # =========================
-uploaded_file = st.file_uploader("Upload an audio file", type=["wav", "mp3"])
+uploaded_file = st.file_uploader("Upload an audio recording", type=["wav", "mp3"])
 
 # =========================
-# DEFAULT VALUES (CRITICAL)
+# DEFAULT VALUES (prevents crashes)
 # =========================
 tempo_val = 0.0
 centroid_mean = 0.0
@@ -27,116 +30,136 @@ mfcc_mean = 0.0
 if uploaded_file is not None:
 
     try:
-        # Load audio
         y, sr = librosa.load(uploaded_file, sr=None)
 
-        # Tempo
+        # ---- Tempo (Pulse Density) ----
         tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-        tempo_val = float(tempo)
 
-        # Spectral Centroid (brightness)
+        if isinstance(tempo, np.ndarray):
+            tempo_val = float(tempo.item()) if tempo.size == 1 else float(np.mean(tempo))
+        else:
+            tempo_val = float(tempo)
+
+        # ---- Spectral Brightness ----
         centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
         centroid_mean = float(np.mean(centroid))
 
-        # MFCC (timbre proxy)
+        # ---- Timbre (MFCC proxy) ----
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
         mfcc_mean = float(np.mean(mfcc))
 
-        st.success("✅ Audio processed successfully")
+        st.success("Audio processed successfully")
 
     except Exception as e:
         st.error(f"Audio processing failed: {e}")
 
 # =========================
-# MACHINE ANALYSIS DISPLAY
+# MACHINE HEARING LAYER
 # =========================
-st.subheader("🤖 Machine Analysis")
+st.subheader("🤖 Machine Hearing (Signal-Level Interpretation)")
 
 col1, col2, col3 = st.columns(3)
 
-col1.metric("Tempo (BPM)", round(tempo_val, 2))
-col2.metric("Brightness", round(centroid_mean, 2))
-col3.metric("Timbre (MFCC)", round(mfcc_mean, 2))
+col1.metric("Pulse Density (Tempo)", round(tempo_val, 2))
+col2.metric("Spectral Brightness", round(centroid_mean, 2))
+col3.metric("Timbral Texture", round(mfcc_mean, 2))
 
 # =========================
-# BRAIN MAPPING (SIMPLIFIED)
+# HUMAN PERCEPTION LAYER
 # =========================
-st.subheader("🧠 Brain Interpretation (Machine)")
+st.subheader("👂 Caribbean Listener Response")
 
-brain_data = pd.DataFrame({
-    "Region": ["Motor Cortex", "Auditory Cortex", "Emotion"],
-    "Activation": [
-        min(tempo_val / 200, 1.0),
-        min(centroid_mean / 5000, 1.0),
-        min(abs(mfcc_mean) / 200, 1.0)
-    ]
-})
+with st.form("listener_form"):
 
-fig, ax = plt.subplots()
-ax.barh(brain_data["Region"], brain_data["Activation"])
-ax.set_xlim(0, 1)
-ax.set_title("Brain Activation (Machine)")
-st.pyplot(fig)
+    groove = st.slider("Groove Intensity (felt rhythm)", 0, 100, 50)
 
-# =========================
-# HUMAN QUESTIONNAIRE
-# =========================
-st.subheader("👤 Human Interpretation")
-
-with st.form("user_input"):
-
-    perceived_tempo = st.slider("Perceived Tempo", 0, 200, 100)
-    perceived_energy = st.slider("Energy Level", 0, 100, 50)
-    perceived_emotion = st.selectbox(
-        "Emotion",
-        ["Happy", "Sad", "Calm", "Aggressive", "Other"]
+    movement = st.selectbox(
+        "Embodied Response",
+        ["Stillness", "Sway", "Dance", "Jump", "Ritual movement"]
     )
 
-    submitted = st.form_submit_button("Submit")
+    familiarity = st.selectbox(
+        "Cultural Familiarity",
+        ["Strongly Caribbean", "Somewhat familiar", "Unfamiliar"]
+    )
+
+    emotion = st.selectbox(
+        "Emotional Register",
+        ["Joy", "Melancholy", "Spiritual", "Energetic", "Other"]
+    )
+
+    submitted = st.form_submit_button("Submit Response")
 
 # =========================
-# HUMAN VS MACHINE COMPARISON
+# COGNITIVE-CULTURAL MAPPING
 # =========================
-if submitted:
+if uploaded_file is not None:
 
-    st.subheader("🔄 Human vs Machine Comparison")
+    st.subheader("🌍 Cognitive-Cultural Activation")
 
-    human_vs_machine = pd.DataFrame({
-        "Feature": ["Tempo", "Energy"],
-        "Human": [perceived_tempo, perceived_energy],
-        "Machine": [
-            tempo_val,
-            min(tempo_val / 2, 100)  # simple mapping
+    familiarity_score = 1.0 if familiarity == "Strongly Caribbean" else 0.5
+
+    cognitive_df = pd.DataFrame({
+        "Domain": ["Movement", "Emotion", "Cultural Memory"],
+        "Activation": [
+            min(tempo_val / 180, 1.0),
+            min(abs(mfcc_mean) / 200, 1.0),
+            familiarity_score
         ]
     })
 
-    st.dataframe(human_vs_machine)
+    fig, ax = plt.subplots()
+    ax.barh(cognitive_df["Domain"], cognitive_df["Activation"])
+    ax.set_xlim(0, 1)
+    ax.set_title("Cognitive Activation (Caribbean Frame)")
+    st.pyplot(fig)
+
+# =========================
+# HUMAN vs MACHINE (TENSION MODEL)
+# =========================
+if submitted:
+
+    st.subheader("⚖️ Machine vs Lived Experience")
+
+    comparison_df = pd.DataFrame({
+        "Aspect": ["Rhythmic Feel", "Energy"],
+        "Machine": [
+            tempo_val,
+            min(tempo_val / 2, 100)
+        ],
+        "Human": [
+            groove,
+            groove
+        ]
+    })
+
+    st.dataframe(comparison_df)
 
     fig2, ax2 = plt.subplots()
-    x = np.arange(len(human_vs_machine["Feature"]))
+    x = np.arange(len(comparison_df["Aspect"]))
 
-    ax2.bar(x - 0.2, human_vs_machine["Human"], width=0.4, label="Human")
-    ax2.bar(x + 0.2, human_vs_machine["Machine"], width=0.4, label="Machine")
+    ax2.bar(x - 0.2, comparison_df["Human"], width=0.4, label="Human")
+    ax2.bar(x + 0.2, comparison_df["Machine"], width=0.4, label="Machine")
 
     ax2.set_xticks(x)
-    ax2.set_xticklabels(human_vs_machine["Feature"])
+    ax2.set_xticklabels(comparison_df["Aspect"])
     ax2.legend()
 
     st.pyplot(fig2)
 
 # =========================
-# EXPORT DATA
+# EXPORT RESULTS
 # =========================
-st.subheader("📁 Export")
+st.subheader("📁 Export Analysis")
 
 results = pd.DataFrame({
     "tempo": [tempo_val],
-    "centroid": [centroid_mean],
-    "mfcc": [mfcc_mean]
+    "brightness": [centroid_mean],
+    "timbre": [mfcc_mean]
 })
 
 st.download_button(
-    "Download Results CSV",
+    "Download CSV",
     results.to_csv(index=False),
-    "analysis.csv"
+    "caribbean_sonic_analysis.csv"
 )
