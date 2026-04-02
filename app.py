@@ -112,6 +112,9 @@ if uploaded_file is not None:
         # =========================
         # BRAIN-LIKE VIEW (SIMPLIFIED)
         # =========================
+        # =========================
+# BRAIN-LIKE VIEW (SIMPLIFIED)
+# =========================
         st.subheader("🧠 Brain Interpretation View")
 
         tempo_val = float(np.mean(tempo))
@@ -124,21 +127,22 @@ if uploaded_file is not None:
         "Energy": energy_val
 }
 
-         brain_df = pd.DataFrame({
-         "Feature": list(brain_data.keys()),
-         "Value": [float(v) for v in brain_data.values()]
+        brain_df = pd.DataFrame({
+        "Feature": list(brain_data.keys()),
+        "Value": [float(v) for v in brain_data.values()]
 })
 
-         fig3, ax3 = plt.subplots()
+        fig3, ax3 = plt.subplots()
 
-         ax3.barh(
-         brain_df["Feature"].astype(str),
-         brain_df["Value"].astype(float)
+        ax3.barh(
+        brain_df["Feature"].astype(str),
+        brain_df["Value"].astype(float)
 )
 
-ax3.set_title("Cognitive Audio Mapping")
+        ax3.set_title("Cognitive Audio Mapping")
 
 st.pyplot(fig3)
+
         # =========================
         # COMPARE WITH USER INPUT
         # =========================
