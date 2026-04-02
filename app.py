@@ -106,22 +106,22 @@ except Exception as e:
         # =========================
         # WAVEFORM
         # =========================
-        st.subheader("Waveform")
-        fig, ax = plt.subplots()
-        librosa.display.waveshow(y, sr=sr, ax=ax)
-        st.pyplot(fig)
+    st.subheader("Waveform")
+    fig, ax = plt.subplots()
+    librosa.display.waveshow(y, sr=sr, ax=ax)
+    st.pyplot(fig)
 
         # =========================
         # SPECTROGRAM
         # =========================
-        st.subheader("Spectrogram")
-        X = librosa.stft(y)
-        Xdb = librosa.amplitude_to_db(abs(X))
+    st.subheader("Spectrogram")
+    X = librosa.stft(y)
+    Xdb = librosa.amplitude_to_db(abs(X))
 
-        fig2, ax2 = plt.subplots()
-        img = librosa.display.specshow(Xdb, sr=sr, x_axis='time', y_axis='hz', ax=ax2)
-        fig2.colorbar(img, ax=ax2)
-        st.pyplot(fig2)
+    fig2, ax2 = plt.subplots()
+    img = librosa.display.specshow(Xdb, sr=sr, x_axis='time', y_axis='hz', ax=ax2)
+    fig2.colorbar(img, ax=ax2)
+    st.pyplot(fig2)
 
         # =========================
         # BRAIN-LIKE VIEW (SIMPLIFIED)
