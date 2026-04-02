@@ -1,21 +1,13 @@
-# =========================
-# IMPORTS
-# =========================
 import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import librosa
-import librosa.display
-from io import BytesIO
-import datetime
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-# =========================
-# PAGE SETUP
-# =========================
-st.set_page_config(page_title="EthnoMusic Lab", layout="wide")
+st.set_page_config(page_title="Ethnomusic Lab", layout="wide")
 
-st.title("🎧 Ethnomusic Analysis Dashboard")
+st.title("🎧 Ethnomusicology Lab")
+st.subheader("Analyze Music + Compare Human vs Machine Interpretation")
 
 # =========================
 # FILE UPLOAD
@@ -23,155 +15,128 @@ st.title("🎧 Ethnomusic Analysis Dashboard")
 uploaded_file = st.file_uploader("Upload an audio file", type=["wav", "mp3"])
 
 # =========================
-# QUESTIONNAIRE
+# DEFAULT VALUES (CRITICAL)
 # =========================
-st.sidebar.header("🎼 Listener Perception")
-
-genre = st.sidebar.selectbox("What genre do you hear?", 
-                            ["Indigenous", "Reggae", "Jazz", "Classical", "Other"])
-
-mood = st.sidebar.selectbox("Mood", 
-                           ["Happy", "Sad", "Energetic", "Calm", "Spiritual"])
-
-instruments = st.sidebar.text_input("Instruments heard")
-
-rhythm = st.sidebar.selectbox("Rhythm type",
-                             ["Steady", "Syncopated", "Free", "Complex"])
-
-submit_q = st.sidebar.button("Save Response")
+tempo_val = 0.0
+centroid_mean = 0.0
+mfcc_mean = 0.0
 
 # =========================
-# SAVE QUESTIONNAIRE
-# =========================
-if submit_q:
-    data = {
-        "timestamp": datetime.datetime.now(),
-        "genre": genre,
-        "mood": mood,
-        "instruments": instruments,
-        "rhythm": rhythm
-    }
-
-    df = pd.DataFrame([data])
-
-    try:
-        df.to_csv("responses.csv", mode='a', header=not pd.io.common.file_exists("responses.csv"), index=False)
-        st.sidebar.success("Saved!")
-    except:
-        st.sidebar.error("Error saving")
-
-# =========================
-# ANALYZE BUTTON
+# AUDIO PROCESSING
 # =========================
 if uploaded_file is not None:
-    if st.button("🔍 Analyze this recording"):
 
-        # LOAD AUDIO
-        y, sr = librosa.load(uploaded_file, sr=22050)
+    try:
+        # Load audio
+        y, sr = librosa.load(uploaded_file, sr=None)
 
-        st.success("Audio Loaded!")
+        # Tempo
+        tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+        tempo_val = float(tempo)
 
-        # =========================
-        # FEATURE EXTRACTION
-        # =========================
-        tempo = 0.0
-try:
-    # ALWAYS define defaults first
-   tempo = 0.0
-   tempo_val = 0.0
+        # Spectral Centroid (brightness)
+        centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
+        centroid_mean = float(np.mean(centroid))
 
-except:
-    y, sr = librosa.load(uploaded_file, sr=None)
+        # MFCC (timbre proxy)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+        mfcc_mean = float(np.mean(mfcc))
 
-    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-    tempo_val = float(tempo)
+        st.success("✅ Audio processed successfully")
 
-except Exception as e:
-    print("Audio processing error:", e)
+    except Exception as e:
+        st.error(f"Audio processing failed: {e}")
 
-    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
-    brightness_val = float(np.mean(spectral_centroid))
+# =========================
+# MACHINE ANALYSIS DISPLAY
+# =========================
+st.subheader("🤖 Machine Analysis")
 
-    rms = librosa.feature.rms(y=y)
-    energy_val = float(np.mean(rms)) * 1000
+col1, col2, col3 = st.columns(3)
 
-except Exception as e:
-    st.error(f"Feature extraction failed: {e}")
-    tempo_val, brightness_val, energy_val = 0.0, 0.0, 0.0
+col1.metric("Tempo (BPM)", round(tempo_val, 2))
+col2.metric("Brightness", round(centroid_mean, 2))
+col3.metric("Timbre (MFCC)", round(mfcc_mean, 2))
 
-    col1.metric("Tempo", f"{tempo_val:.2f} BPM")
-    col2.metric("Brightness", f"{brightness_val:.2f}")
-    col3.metric("Energy", f"{energy_val:.4f}")
+# =========================
+# BRAIN MAPPING (SIMPLIFIED)
+# =========================
+st.subheader("🧠 Brain Interpretation (Machine)")
 
-        # =========================
-        # WAVEFORM
-        # =========================
-    st.subheader("Waveform")
-    fig, ax = plt.subplots()
-    librosa.display.waveshow(y, sr=sr, ax=ax)
-    st.pyplot(fig)
+brain_data = pd.DataFrame({
+    "Region": ["Motor Cortex", "Auditory Cortex", "Emotion"],
+    "Activation": [
+        min(tempo_val / 200, 1.0),
+        min(centroid_mean / 5000, 1.0),
+        min(abs(mfcc_mean) / 200, 1.0)
+    ]
+})
 
-        # =========================
-        # SPECTROGRAM
-        # =========================
-    st.subheader("Spectrogram")
-    X = librosa.stft(y)
-    Xdb = librosa.amplitude_to_db(abs(X))
+fig, ax = plt.subplots()
+ax.barh(brain_data["Region"], brain_data["Activation"])
+ax.set_xlim(0, 1)
+ax.set_title("Brain Activation (Machine)")
+st.pyplot(fig)
+
+# =========================
+# HUMAN QUESTIONNAIRE
+# =========================
+st.subheader("👤 Human Interpretation")
+
+with st.form("user_input"):
+
+    perceived_tempo = st.slider("Perceived Tempo", 0, 200, 100)
+    perceived_energy = st.slider("Energy Level", 0, 100, 50)
+    perceived_emotion = st.selectbox(
+        "Emotion",
+        ["Happy", "Sad", "Calm", "Aggressive", "Other"]
+    )
+
+    submitted = st.form_submit_button("Submit")
+
+# =========================
+# HUMAN VS MACHINE COMPARISON
+# =========================
+if submitted:
+
+    st.subheader("🔄 Human vs Machine Comparison")
+
+    human_vs_machine = pd.DataFrame({
+        "Feature": ["Tempo", "Energy"],
+        "Human": [perceived_tempo, perceived_energy],
+        "Machine": [
+            tempo_val,
+            min(tempo_val / 2, 100)  # simple mapping
+        ]
+    })
+
+    st.dataframe(human_vs_machine)
 
     fig2, ax2 = plt.subplots()
-    img = librosa.display.specshow(Xdb, sr=sr, x_axis='time', y_axis='hz', ax=ax2)
-    fig2.colorbar(img, ax=ax2)
+    x = np.arange(len(human_vs_machine["Feature"]))
+
+    ax2.bar(x - 0.2, human_vs_machine["Human"], width=0.4, label="Human")
+    ax2.bar(x + 0.2, human_vs_machine["Machine"], width=0.4, label="Machine")
+
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(human_vs_machine["Feature"])
+    ax2.legend()
+
     st.pyplot(fig2)
 
-        # =========================
-        # BRAIN-LIKE VIEW (SIMPLIFIED)
-        # =========================
-        # =========================
-# BRAIN-LIKE VIEW (SIMPLIFIED)
 # =========================
-        # =========================
-# BRAIN VIEW
+# EXPORT DATA
 # =========================
-st.subheader("🧠 Brain Interpretation View")
+st.subheader("📁 Export")
 
-print("Tempo:", tempo)
-print("Type:", type(tempo))
-tempo_val = float(tempo)
-brightness_val = float(spectral_centroid)
-energy_val = float(rms) * 1000
-
-brain_data = {
-    "Rhythm (Tempo)": tempo_val,
-    "Timbre (Brightness)": brightness_val,
-    "Energy": energy_val
-}
-
-brain_df = pd.DataFrame({
-    "Feature": list(brain_data.keys()),
-    "Value": [float(v) for v in brain_data.values()]
+results = pd.DataFrame({
+    "tempo": [tempo_val],
+    "centroid": [centroid_mean],
+    "mfcc": [mfcc_mean]
 })
 
-fig3, ax3 = plt.subplots()
-ax3.barh(brain_df["Feature"], brain_df["Value"])
-ax3.set_title("Cognitive Audio Mapping")
-st.pyplot(fig3)
-
-# =========================
-# MACHINE VS HUMAN
-# =========================
-st.subheader("🔄 Machine vs Human Interpretation")
-
-st.write("**User Input**")
-st.json({
-    "Genre": genre,
-    "Mood": mood,
-    "Rhythm": rhythm,
-    "Instruments": instruments
-})
-
-st.write("**Machine Output**")
-st.json({
-    "Tempo": float(tempo_val),
-    "Brightness": float(brightness_val),
-    "Energy": float(energy_val)
-})
+st.download_button(
+    "Download Results CSV",
+    results.to_csv(index=False),
+    "analysis.csv"
+)
