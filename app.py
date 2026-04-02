@@ -1,198 +1,144 @@
+# =========================
+# IMPORTS
+# =========================
 import streamlit as st
-import numpy as np
-import soundfile as sf
-import matplotlib.pyplot as plt
 import pandas as pd
-import requests
+import numpy as np
+import matplotlib.pyplot as plt
+import librosa
+import librosa.display
 from io import BytesIO
+import datetime
 
 # =========================
-# AUTO LOAD AUDIO FROM URL
+# PAGE SETUP
 # =========================
-query_params = st.query_params
+st.set_page_config(page_title="EthnoMusic Lab", layout="wide")
 
-audio_url = query_params.get("audio", None)
-
-if audio_url:
-    try:
-        response = requests.get(audio_url)
-        uploaded_file = BytesIO(response.content)
-    except:
-        st.error("Failed to load audio from URL")
-        uploaded_file = None
-else:
-    uploaded_file = st.file_uploader("Upload Audio File", type=["wav", "mp3"])
-
-st.set_page_config(page_title="EthnoMusic Cognitive Lab", layout="wide")
-
-st.title("🧠 EthnoMusic Lab: Cognitive Interpretation System")
+st.title("🎧 Ethnomusic Analysis Dashboard")
 
 # =========================
-# CULTURE SELECTOR
+# FILE UPLOAD
 # =========================
-st.sidebar.header("🌍 Cultural Context")
-
-culture = st.sidebar.selectbox(
-    "Select Cultural Model",
-    ["Neutral", "Indigenous (Baboon Dance)", "Afro-Caribbean", "Western Classical"]
-)
+uploaded_file = st.file_uploader("Upload an audio file", type=["wav", "mp3"])
 
 # =========================
-# AUDIO UPLOAD
+# QUESTIONNAIRE
 # =========================
-uploaded_file = st.file_uploader("Upload Audio", type=["wav","mp3"]) if not audio_url else uploaded_file
+st.sidebar.header("🎼 Listener Perception")
 
-if uploaded_file is not None:
+genre = st.sidebar.selectbox("What genre do you hear?", 
+                            ["Indigenous", "Reggae", "Jazz", "Classical", "Other"])
 
-    # =========================
-    # LOAD AUDIO
-    # =========================
-    y, sr = sf.read(uploaded_file)
+mood = st.sidebar.selectbox("Mood", 
+                           ["Happy", "Sad", "Energetic", "Calm", "Spiritual"])
 
-    # Convert to mono
-    if len(y.shape) > 1:
-        y = np.mean(y, axis=1)
+instruments = st.sidebar.text_input("Instruments heard")
 
-    st.audio(uploaded_file)
+rhythm = st.sidebar.selectbox("Rhythm type",
+                             ["Steady", "Syncopated", "Free", "Complex"])
 
-    # =========================
-    # WAVEFORM
-    # =========================
-    st.subheader("🔊 Waveform")
+submit_q = st.sidebar.button("Save Response")
 
-    fig, ax = plt.subplots()
-    ax.plot(y)
-    ax.set_title("Waveform")
-    st.pyplot(fig)
-
-    # =========================
-    # FEATURE EXTRACTION
-    # =========================
-    st.subheader("🎛️ MIR Feature Extraction")
-
-    duration = len(y) / sr
-
-    # Energy (RMS)
-    rms = np.sqrt(np.mean(y**2))
-
-    # Zero Crossing Rate (roughness)
-    zcr = np.mean(np.abs(np.diff(np.sign(y))))
-
-    # Spectral centroid (brightness)
-    spectrum = np.abs(np.fft.fft(y))
-    freqs = np.fft.fftfreq(len(spectrum), 1/sr)
-    spectral_centroid = np.sum(freqs * spectrum) / (np.sum(spectrum) + 1e-6)
-
-    # Tempo (very rough proxy)
-    tempo = 60 / duration if duration > 0 else 0
-
-    features = {
-        "Tempo": tempo,
-        "Energy (RMS)": rms,
-        "Brightness": spectral_centroid,
-        "Roughness": zcr
+# =========================
+# SAVE QUESTIONNAIRE
+# =========================
+if submit_q:
+    data = {
+        "timestamp": datetime.datetime.now(),
+        "genre": genre,
+        "mood": mood,
+        "instruments": instruments,
+        "rhythm": rhythm
     }
 
-    st.write(features)
+    df = pd.DataFrame([data])
 
-    # =========================
-    # PERCEPTUAL MAPPING
-    # =========================
-    st.subheader("🧠 Cognitive Interpretation")
+    try:
+        df.to_csv("responses.csv", mode='a', header=not pd.io.common.file_exists("responses.csv"), index=False)
+        st.sidebar.success("Saved!")
+    except:
+        st.sidebar.error("Error saving")
 
-    def interpret(features):
-        energy = features["Tempo"] * 0.3 + features["Energy (RMS)"] * 100
-        brightness = features["Brightness"] / 1000
-        tension = features["Roughness"] * 10
-        stability = 1 / (tension + 0.1)
-        groove = energy * stability
+# =========================
+# ANALYZE BUTTON
+# =========================
+if uploaded_file is not None:
+    if st.button("🔍 Analyze this recording"):
 
-        return {
-            "Energy": energy,
-            "Brightness": brightness,
-            "Tension": tension,
-            "Stability": stability,
-            "Groove": groove
+        # LOAD AUDIO
+        y, sr = librosa.load(uploaded_file, sr=22050)
+
+        st.success("Audio Loaded!")
+
+        # =========================
+        # FEATURE EXTRACTION
+        # =========================
+        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+        spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
+        rms = np.mean(librosa.feature.rms(y=y))
+
+        st.subheader("📊 Audio Features")
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Tempo", f"{tempo:.2f} BPM")
+        col2.metric("Brightness", f"{spectral_centroid:.2f}")
+        col3.metric("Energy", f"{rms:.4f}")
+
+        # =========================
+        # WAVEFORM
+        # =========================
+        st.subheader("Waveform")
+        fig, ax = plt.subplots()
+        librosa.display.waveshow(y, sr=sr, ax=ax)
+        st.pyplot(fig)
+
+        # =========================
+        # SPECTROGRAM
+        # =========================
+        st.subheader("Spectrogram")
+        X = librosa.stft(y)
+        Xdb = librosa.amplitude_to_db(abs(X))
+
+        fig2, ax2 = plt.subplots()
+        img = librosa.display.specshow(Xdb, sr=sr, x_axis='time', y_axis='hz', ax=ax2)
+        fig2.colorbar(img, ax=ax2)
+        st.pyplot(fig2)
+
+        # =========================
+        # BRAIN-LIKE VIEW (SIMPLIFIED)
+        # =========================
+        st.subheader("🧠 Brain Interpretation View")
+
+        brain_data = {
+            "Rhythm (Tempo)": tempo,
+            "Timbre (Brightness)": spectral_centroid,
+            "Energy": rms * 1000
         }
 
-    perception = interpret(features)
+        brain_df = pd.DataFrame(list(brain_data.items()), columns=["Feature", "Value"])
 
-    # =========================
-    # CULTURAL MODIFIER
-    # =========================
-    def apply_culture(p, culture):
-        if culture == "Indigenous (Baboon Dance)":
-            p["Groove"] *= 1.5
-            p["Energy"] *= 1.2
-        elif culture == "Afro-Caribbean":
-            p["Groove"] *= 1.4
-        elif culture == "Western Classical":
-            p["Tension"] *= 1.3
-        return p
+        fig3, ax3 = plt.subplots()
+        ax3.barh(brain_df["Feature"], brain_df["Value"])
+        ax3.set_title("Cognitive Audio Mapping")
+        st.pyplot(fig3)
 
-    perception = apply_culture(perception, culture)
+        # =========================
+        # COMPARE WITH USER INPUT
+        # =========================
+        st.subheader("🔄 Machine vs Human Interpretation")
 
-    st.write(perception)
+        st.write("**User Input**")
+        st.json({
+            "Genre": genre,
+            "Mood": mood,
+            "Rhythm": rhythm,
+            "Instruments": instruments
+        })
 
-    # =========================
-    # RADAR CHART
-    # =========================
-    st.subheader("📊 Perceptual Profile")
-
-    labels = list(perception.keys())
-    values = list(perception.values())
-
-    angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
-    values += values[:1]
-    angles += angles[:1]
-
-    fig2, ax2 = plt.subplots(subplot_kw=dict(polar=True))
-    ax2.plot(angles, values)
-    ax2.fill(angles, values, alpha=0.25)
-    ax2.set_xticks(angles[:-1])
-    ax2.set_xticklabels(labels)
-
-    st.pyplot(fig2)
-
-    # =========================
-    # ENERGY OVER TIME
-    # =========================
-    st.subheader("🌊 Energy Over Time")
-
-    frame_size = 1024
-    hop = 512
-
-    rms_frames = []
-    times = []
-
-    for i in range(0, len(y) - frame_size, hop):
-        frame = y[i:i+frame_size]
-        rms_frames.append(np.sqrt(np.mean(frame**2)))
-        times.append(i / sr)
-
-    fig3, ax3 = plt.subplots()
-    ax3.plot(times, rms_frames)
-    ax3.set_xlabel("Time (s)")
-    ax3.set_ylabel("Energy")
-
-    st.pyplot(fig3)
-
-    # =========================
-    # TEXT INTERPRETATION
-    # =========================
-    st.subheader("📝 Cognitive Summary")
-
-    def generate_text(p, culture):
-        energy_desc = "high energy" if p["Energy"] > 50 else "moderate energy"
-        groove_desc = "strong groove" if p["Groove"] > 20 else "low groove"
-        tension_desc = "high tension" if p["Tension"] > 1 else "low tension"
-
-        return f"""
-        This piece exhibits {energy_desc}, suggesting active listener engagement.
-        The rhythmic structure produces a {groove_desc}, indicating movement or dance potential.
-        The timbral qualities reflect {tension_desc}, shaping emotional intensity.
-        Within the {culture} framework, the piece can be interpreted as a 
-        {'ritualistic' if p['Groove'] > 20 else 'reflective'} musical experience.
-        """
-
-    st.write(generate_text(perception, culture))
+        st.write("**Machine Output**")
+        st.json({
+            "Tempo": float(tempo),
+            "Brightness": float(spectral_centroid),
+            "Energy": float(rms)
+        })
