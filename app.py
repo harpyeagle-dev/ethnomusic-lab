@@ -3,6 +3,10 @@ import librosa
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import openl3
+import soundfile as sf
+from sklearn.decomposition import PCA
+import plotly.graph_objects as go
 
 # =========================
 # PAGE SETUP
@@ -23,6 +27,7 @@ uploaded_file = st.file_uploader("Upload an audio recording", type=["wav", "mp3"
 tempo_val = 0.0
 centroid_mean = 0.0
 mfcc_mean = 0.0
+embedding_mean = np.zeros(512)
 
 # =========================
 # AUDIO PROCESSING
@@ -30,11 +35,11 @@ mfcc_mean = 0.0
 if uploaded_file is not None:
 
     try:
+        # ---- Load audio ----
         y, sr = librosa.load(uploaded_file, sr=None)
 
-        # ---- Tempo (Pulse Density) ----
+        # ---- Tempo ----
         tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
-
         if isinstance(tempo, np.ndarray):
             tempo_val = float(tempo.item()) if tempo.size == 1 else float(np.mean(tempo))
         else:
@@ -44,85 +49,107 @@ if uploaded_file is not None:
         centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
         centroid_mean = float(np.mean(centroid))
 
-        # ---- Timbre (MFCC proxy) ----
+        # ---- Timbre (MFCC) ----
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
         mfcc_mean = float(np.mean(mfcc))
 
-        st.success("Audio processed successfully")
+        # ---- OpenL3 Embeddings ----
+        audio, sr2 = sf.read(uploaded_file)
+        embeddings, timestamps = openl3.get_audio_embedding(
+            audio, sr2,
+            content_type="music",
+            embedding_size=512
+        )
+
+        embedding_mean = np.mean(embeddings, axis=0)
+
+        st.success("✅ Audio processed successfully")
 
     except Exception as e:
         st.error(f"Audio processing failed: {e}")
 
 # =========================
-# MACHINE HEARING LAYER
+# MACHINE HEARING
 # =========================
-st.subheader("🤖 Machine Hearing (Signal-Level Interpretation)")
+st.subheader("🤖 Machine Hearing (Signal-Level)")
 
 col1, col2, col3 = st.columns(3)
-
 col1.metric("Pulse Density (Tempo)", round(tempo_val, 2))
 col2.metric("Spectral Brightness", round(centroid_mean, 2))
 col3.metric("Timbral Texture", round(mfcc_mean, 2))
 
 # =========================
-# HUMAN PERCEPTION LAYER
+# HUMAN RESPONSE
 # =========================
 st.subheader("👂 Caribbean Listener Response")
 
 with st.form("listener_form"):
-
-    groove = st.slider("Groove Intensity (felt rhythm)", 0, 100, 50)
-
+    groove = st.slider("Groove Intensity", 0, 100, 50)
     movement = st.selectbox(
         "Embodied Response",
-        ["Stillness", "Sway", "Dance", "Jump", "Ritual movement"]
+        ["Stillness", "Sway", "Dance", "Jump", "Ritual"]
     )
-
     familiarity = st.selectbox(
         "Cultural Familiarity",
-        ["Strongly Caribbean", "Somewhat familiar", "Unfamiliar"]
+        ["Strongly Caribbean", "Somewhat", "Unfamiliar"]
     )
-
     emotion = st.selectbox(
         "Emotional Register",
         ["Joy", "Melancholy", "Spiritual", "Energetic", "Other"]
     )
 
-    submitted = st.form_submit_button("Submit Response")
+    submitted = st.form_submit_button("Submit")
 
 # =========================
-# COGNITIVE-CULTURAL MAPPING
+# PCA EMBEDDING SPACE
 # =========================
 if uploaded_file is not None:
 
-    st.subheader("🌍 Cognitive-Cultural Activation")
+    st.subheader("🔬 Cultural Embedding Space (PCA)")
 
-    familiarity_score = 1.0 if familiarity == "Strongly Caribbean" else 0.5
+    pca = PCA(n_components=2)
+    reduced = pca.fit_transform(embeddings)
 
-    cognitive_df = pd.DataFrame({
-        "Domain": ["Movement", "Emotion", "Cultural Memory"],
-        "Activation": [
-            min(tempo_val / 180, 1.0),
-            min(abs(mfcc_mean) / 200, 1.0),
-            familiarity_score
-        ]
-    })
-
-    fig, ax = plt.subplots()
-    ax.barh(cognitive_df["Domain"], cognitive_df["Activation"])
-    ax.set_xlim(0, 1)
-    ax.set_title("Cognitive Activation (Caribbean Frame)")
-    st.pyplot(fig)
+    fig_pca, ax_pca = plt.subplots()
+    ax_pca.scatter(reduced[:, 0], reduced[:, 1], alpha=0.5)
+    ax_pca.set_title("Audio Identity Space")
+    st.pyplot(fig_pca)
 
 # =========================
-# HUMAN vs MACHINE (TENSION MODEL)
+# 3D BRAIN MODEL
+# =========================
+if uploaded_file is not None:
+
+    st.subheader("🧠 3D Cognitive Model")
+
+    brain_regions = ["Motor", "Auditory", "Emotion"]
+    values = [
+        min(tempo_val / 180, 1.0),
+        min(centroid_mean / 5000, 1.0),
+        min(abs(mfcc_mean) / 200, 1.0)
+    ]
+
+    fig3d = go.Figure(data=[go.Scatter3d(
+        x=[1, 2, 3],
+        y=[1, 2, 3],
+        z=values,
+        mode='markers+text',
+        text=brain_regions,
+        marker=dict(size=10)
+    )])
+
+    fig3d.update_layout(title="Cognitive Activation Model")
+    st.plotly_chart(fig3d)
+
+# =========================
+# HUMAN VS MACHINE
 # =========================
 if submitted:
 
     st.subheader("⚖️ Machine vs Lived Experience")
 
     comparison_df = pd.DataFrame({
-        "Aspect": ["Rhythmic Feel", "Energy"],
+        "Aspect": ["Rhythm", "Energy"],
         "Machine": [
             tempo_val,
             min(tempo_val / 2, 100)
@@ -148,18 +175,22 @@ if submitted:
     st.pyplot(fig2)
 
 # =========================
-# EXPORT RESULTS
+# RESEARCH EXPORT
 # =========================
-st.subheader("📁 Export Analysis")
+st.subheader("📄 Research Export")
 
-results = pd.DataFrame({
+research_df = pd.DataFrame({
     "tempo": [tempo_val],
     "brightness": [centroid_mean],
-    "timbre": [mfcc_mean]
+    "timbre": [mfcc_mean],
+    "embedding_1": [embedding_mean[0]],
+    "embedding_2": [embedding_mean[1]]
 })
 
+st.dataframe(research_df)
+
 st.download_button(
-    "Download CSV",
-    results.to_csv(index=False),
-    "caribbean_sonic_analysis.csv"
+    "Download Research CSV",
+    research_df.to_csv(index=False),
+    "caribbean_sonic_research.csv"
 )
