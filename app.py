@@ -95,13 +95,30 @@ col3.metric("Timbral Texture", round(features["timbre"], 2))
 # =========================
 st.subheader("👂 Caribbean Listener")
 
+groove = 50
+movement = "Still"
+familiarity = "Caribbean"
+emotion = "Joy"
+
 with st.form("listener"):
+
     groove = st.slider("Groove", 0, 100, 50)
     movement = st.selectbox("Movement", ["Still", "Sway", "Dance", "Ritual"])
     familiarity = st.selectbox("Familiarity", ["Caribbean", "Mixed", "Foreign"])
     emotion = st.selectbox("Emotion", ["Joy", "Melancholy", "Spiritual", "Energy"])
 
     submitted = st.form_submit_button("Submit")
+
+if submitted:
+    st.subheader("⚖️ Human vs Machine")
+
+    compare_df = pd.DataFrame({
+        "Aspect": ["Rhythm", "Energy"],
+        "Machine": [features["tempo"], features["tempo"] / 2],
+        "Human": [groove, groove]
+    })
+
+    st.dataframe(compare_df)
 
 # =========================
 # COGNITIVE MODEL
