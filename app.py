@@ -30,9 +30,12 @@ features = {
 # =========================
 # PROCESSING (LIGHTWEIGHT, NO LIBROSA)
 # =========================
+import io
+
 if uploaded_file is not None:
     try:
-        sr, y = wavfile.read(uploaded_file)
+        bytes_data = uploaded_file.read()
+        sr, y = wavfile.read(io.BytesIO(bytes_data))
 
         y = y.astype(float)
 
@@ -40,19 +43,18 @@ if uploaded_file is not None:
         if y.ndim > 1:
             y = np.mean(y, axis=1)
 
-        # ---- Tempo proxy (energy-based) ----
+        # ---- Tempo proxy ----
         energy = np.abs(y)
         tempo_val = float(np.mean(energy)) * 100
 
-        # ---- Brightness (FFT) ----
+        # ---- Brightness ----
         spectrum = np.fft.fft(y)
         freqs = np.fft.fftfreq(len(spectrum))
         brightness_val = float(np.mean(np.abs(freqs)))
 
-        # ---- Timbre proxy ----
+        # ---- Timbre ----
         timbre_val = float(np.std(y))
 
-        # Save features
         features["tempo"] = tempo_val
         features["brightness"] = brightness_val
         features["timbre"] = timbre_val
@@ -61,9 +63,6 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Processing failed: {e}")
-
-else:
-    st.info("Upload an audio file to begin analysis")
 
 # =========================
 # MACHINE HEARING (ALWAYS VISIBLE)
