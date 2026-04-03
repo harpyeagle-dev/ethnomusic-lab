@@ -1,6 +1,9 @@
 # Fix missing pkg_resources
 setuptools>=65
 
+setuptools>=65
+wheel
+
 # Core app
 streamlit>=1.30,<2
 
