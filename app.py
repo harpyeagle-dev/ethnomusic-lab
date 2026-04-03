@@ -4,6 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from scipy.io import wavfile
+import io
+import time
 
 # =========================
 # PAGE SETUP
@@ -16,10 +18,11 @@ st.caption("A Cognitive Interface for Sound, Culture, and Embodied Listening")
 # =========================
 # INPUT
 # =========================
-uploaded_file = st.file_uploader("Upload audio (WAV recommended)", type=["wav", "mp3"])
+uploaded_file = st.file_uploader("Upload WAV audio", type=["wav"])
+process = st.button("🔍 Analyze Audio")
 
 # =========================
-# STATE (single source of truth)
+# STATE
 # =========================
 features = {
     "tempo": 0.0,
@@ -27,14 +30,16 @@ features = {
     "timbre": 0.0
 }
 
-# =========================
-# PROCESSING (LIGHTWEIGHT, NO LIBROSA)
-# =========================
-import io
+processing_time = 0.0
 
-if uploaded_file is not None:
+# =========================
+# AUDIO PROCESSING
+# =========================
+if uploaded_file is not None and process:
+    start_time = time.time()
+
     try:
-        bytes_data = uploaded_file.read()
+        bytes_data = uploaded_file.getvalue()
         sr, y = wavfile.read(io.BytesIO(bytes_data))
 
         y = y.astype(float)
@@ -43,46 +48,55 @@ if uploaded_file is not None:
         if y.ndim > 1:
             y = np.mean(y, axis=1)
 
-        # ---- Tempo proxy ----
+        # Speed optimization (important)
+        if len(y) > 500000:
+            y = y[:500000]
+
+        # =========================
+        # FEATURE EXTRACTION (FIXED)
+        # =========================
         energy = np.abs(y)
-        tempo_val = float(np.mean(energy)) * 100
+        tempo_val = float(np.mean(energy)) * 1000
 
-        # ---- Brightness ----
-        spectrum = np.fft.fft(y)
-        freqs = np.fft.fftfreq(len(spectrum))
-        brightness_val = float(np.mean(np.abs(freqs)))
+        spectrum = np.abs(np.fft.fft(y))
+        brightness_val = float(np.mean(spectrum))
 
-        # ---- Timbre ----
-        timbre_val = float(np.std(y))
+        timbre_val = float(np.std(y)) * 10
 
         features["tempo"] = tempo_val
         features["brightness"] = brightness_val
         features["timbre"] = timbre_val
 
-        st.success("✅ Audio processed successfully")
+        processing_time = time.time() - start_time
+
+        st.success(f"✅ Audio processed in {processing_time:.2f} seconds")
 
     except Exception as e:
         st.error(f"Processing failed: {e}")
 
+elif uploaded_file is None:
+    st.info("Upload a WAV file and click Analyze")
+
 # =========================
-# MACHINE HEARING (ALWAYS VISIBLE)
+# MACHINE HEARING
 # =========================
 st.subheader("🤖 Machine Hearing")
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Pulse Density", round(features["tempo"], 2))
-col2.metric("Spectral Brightness", round(features["brightness"], 4))
-col3.metric("Timbral Texture", round(features["timbre"], 4))
+col2.metric("Spectral Brightness", round(features["brightness"], 2))
+col3.metric("Timbral Texture", round(features["timbre"], 2))
+
+# =========================
+# PROCESSING TIME DISPLAY
+# =========================
+st.subheader("⏱ Processing Time")
+st.metric("Analysis Duration (seconds)", f"{processing_time:.2f}")
 
 # =========================
 # HUMAN RESPONSE
 # =========================
 st.subheader("👂 Caribbean Listener")
-
-groove = 50
-movement = "Still"
-familiarity = "Caribbean"
-emotion = "Joy"
 
 with st.form("listener"):
     groove = st.slider("Groove", 0, 100, 50)
@@ -93,37 +107,72 @@ with st.form("listener"):
     submitted = st.form_submit_button("Submit")
 
 # =========================
-# COGNITIVE MAPPING (ALWAYS VISIBLE)
+# NORMALIZATION (FIXED)
 # =========================
-st.subheader("🧠 Cognitive Mapping")
+motor = min(features["tempo"] / 500, 1.0)
+auditory = min(features["brightness"] / 50000, 1.0)
+emotion_val = min(features["timbre"] / 50, 1.0)
 
-motor = min(features["tempo"] / 180, 1.0)
-auditory = min(features["brightness"] * 1000, 1.0)
-emotion_val = min(abs(features["timbre"]) / 1000, 1.0)
+# =========================
+# 🧠 2D BRAIN MAP
+# =========================
+st.subheader("🧠 Brain Activation Map")
 
-brain_df = pd.DataFrame({
-    "Region": ["Motor", "Auditory", "Emotion"],
-    "Activation": [motor, auditory, emotion_val]
-})
+brain_layout = {
+    "Motor Cortex": (0.3, 0.6),
+    "Auditory Cortex": (0.6, 0.7),
+    "Limbic System": (0.5, 0.3)
+}
+
+activations = {
+    "Motor Cortex": motor,
+    "Auditory Cortex": auditory,
+    "Limbic System": emotion_val
+}
 
 fig, ax = plt.subplots()
-ax.barh(brain_df["Region"], brain_df["Activation"])
+
+for region, (x, y) in brain_layout.items():
+    val = activations[region]
+    ax.scatter(x, y, s=val * 2000 + 100, alpha=0.7)
+    ax.text(x, y, region, ha='center')
+
 ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_title("Cognitive Activation (Caribbean Listening)")
+ax.axis('off')
+
 st.pyplot(fig)
 
 # =========================
-# 3D BRAIN MODEL
+# 🧠 3D BRAIN MODEL
 # =========================
 st.subheader("🧠 3D Cognitive Model")
 
+x = [1, 2, 3]
+y = [2, 2, 2]
+z = [motor, auditory, emotion_val]
+
+sizes = [v * 40 + 10 for v in z]
+
 fig3d = go.Figure(data=[go.Scatter3d(
-    x=[1, 2, 3],
-    y=[1, 2, 3],
-    z=[motor, auditory, emotion_val],
+    x=x,
+    y=y,
+    z=z,
     mode='markers+text',
     text=["Motor", "Auditory", "Emotion"],
-    marker=dict(size=10)
+    marker=dict(
+        size=sizes,
+        color=z,
+        colorscale='Viridis',
+        opacity=0.9
+    )
 )])
+
+fig3d.update_layout(
+    title="3D Cognitive Activation",
+    scene=dict(zaxis=dict(range=[0, 1]))
+)
 
 st.plotly_chart(fig3d)
 
@@ -149,7 +198,8 @@ st.subheader("📄 Export")
 export_df = pd.DataFrame({
     "tempo": [features["tempo"]],
     "brightness": [features["brightness"]],
-    "timbre": [features["timbre"]]
+    "timbre": [features["timbre"]],
+    "processing_time_sec": [processing_time]
 })
 
 st.download_button(
@@ -157,8 +207,3 @@ st.download_button(
     export_df.to_csv(index=False),
     "caribbean_sonic_data.csv"
 )
-
-# =========================
-# DEBUG (REMOVE LATER)
-# =========================
-st.write("DEBUG FEATURES:", features)
