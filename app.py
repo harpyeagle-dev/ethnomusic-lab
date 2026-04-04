@@ -74,6 +74,7 @@ with st.form("analysis_form"):
     emotion = st.slider("Emotional Intensity", 1, 5, 3)
 
     submit = st.form_submit_button("🔍 Analyze Audio")
+    st.info("⚡ Use MP3 files under 5MB and <30 seconds for fastest performance")
 
 # =========================
 # 🔥 TEMPO FUNCTION
