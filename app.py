@@ -1,185 +1,167 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+import librosa
 import matplotlib.pyplot as plt
-from scipy.io import wavfile
-import io
-import time
+
+st.set_page_config(layout="wide")
+st.title("🧠 Caribbean Sonic Humanities Engine")
 
 # =========================
-# PAGE SETUP
+# MODE TOGGLE
 # =========================
-st.set_page_config(page_title="Caribbean Sonic Humanities Lab", layout="wide")
-
-st.title("🌴 Caribbean Sonic Humanities Lab")
-st.caption("End-to-End Cognitive Music Analysis")
+mode = st.sidebar.radio("Select Mode", ["Fast Analysis", "Research Mode"])
 
 # =========================
-# SESSION STATE (CRITICAL)
+# FILE UPLOAD
 # =========================
-if "features" not in st.session_state:
-    st.session_state.features = {"tempo": 0.0, "brightness": 0.0, "timbre": 0.0}
-
-if "processing_time" not in st.session_state:
-    st.session_state.processing_time = 0.0
-
-if "processed" not in st.session_state:
-    st.session_state.processed = False
+uploaded_file = st.file_uploader("Upload Audio (WAV/MP3)", type=["wav", "mp3"])
 
 # =========================
-# INPUT
+# HUMAN QUESTIONNAIRE
 # =========================
-uploaded_file = st.file_uploader("Upload WAV audio (any size)", type=["wav"])
+st.sidebar.header("🧍 Listener Input")
 
-# =========================
-# ANALYSIS CONTROLS
-# =========================
-clip_duration = st.slider("Analysis Window (seconds)", 5, 60, 20)
-
-start_sec = 0
-if uploaded_file is not None:
-    # temporary estimate for slider range
-    start_sec = st.slider("Start Position (seconds)", 0, 120, 0)
-
-process = st.button("🔍 Analyze Audio")
+mood = st.sidebar.selectbox("Mood", ["Calm", "Energetic", "Sad", "Spiritual", "Aggressive"])
+culture = st.sidebar.selectbox("Cultural Feel", ["Indigenous", "Western", "Fusion", "Unknown"])
+rhythm_feel = st.sidebar.selectbox("Rhythm Feel", ["Steady", "Free", "Dance-like"])
+emotion_score = st.sidebar.slider("Emotional Intensity", 1, 5, 3)
 
 # =========================
-# PROCESSING
+# PROCESS AUDIO
 # =========================
-if uploaded_file is not None and process:
+if uploaded_file:
 
-    start_time = time.time()
+    with st.spinner("Processing audio..."):
 
-    try:
-        # Load audio correctly
-        file_bytes = uploaded_file.getvalue()
-        sr, y = wavfile.read(io.BytesIO(file_bytes))
-
-        y = y.astype(float)
-
-        # Convert stereo → mono
-        if y.ndim > 1:
-            y = np.mean(y, axis=1)
+        # 🔥 FIX: limit size + speed
+        y, sr = librosa.load(uploaded_file, sr=22050, duration=60)
 
         # =========================
-        # SMART SEGMENT SELECTION
+        # MACHINE FEATURES
         # =========================
-        start_sample = int(start_sec * sr)
-        end_sample = start_sample + int(clip_duration * sr)
+        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
 
-        if end_sample > len(y):
-            end_sample = len(y)
+        rms = np.mean(librosa.feature.rms(y=y))
+        centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
+        mfcc = np.mean(librosa.feature.mfcc(y=y, sr=sr))
 
-        y = y[start_sample:end_sample]
+        # fallback safety
+        tempo = float(tempo) if tempo > 0 else 60
+        rms = float(rms) if rms > 0 else 0.1
+        centroid = float(centroid) if centroid > 0 else 1000
+        mfcc = float(mfcc)
 
-        st.info(f"Processing segment: {start_sec}s → {start_sec + clip_duration}s")
-
-        # =========================
-        # FEATURE EXTRACTION (ROBUST)
-        # =========================
-        energy = np.abs(y)
-        tempo_val = float(np.mean(energy)) * 500
-
-        spectrum = np.abs(np.fft.fft(y))
-        brightness_val = float(np.mean(spectrum))
-
-        timbre_val = float(np.std(y)) * 5
-
-        # Save state
-        st.session_state.features = {
-            "tempo": max(tempo_val, 1),
-            "brightness": max(brightness_val, 1),
-            "timbre": max(timbre_val, 1)
+        features = {
+            "tempo": tempo,
+            "energy": rms,
+            "brightness": centroid,
+            "timbre": mfcc
         }
 
-        st.session_state.processing_time = time.time() - start_time
-        st.session_state.processed = True
+    st.success("Audio processed!")
 
-        st.success(f"✅ Processed in {st.session_state.processing_time:.2f} seconds")
+    # =========================
+    # INTERPRETATION ENGINE
+    # =========================
+    interpretation = []
 
-    except Exception as e:
-        st.error(f"Processing failed: {e}")
+    if tempo > 120:
+        interpretation.append("High energy, dance-oriented")
+    elif tempo < 80:
+        interpretation.append("Slow, reflective or ceremonial")
 
-# =========================
-# ALWAYS DISPLAY RESULTS
-# =========================
-features = st.session_state.features
+    if centroid < 2000:
+        interpretation.append("Warm / traditional tonal quality")
 
-st.subheader("🤖 Machine Hearing")
+    if mood == "Spiritual":
+        interpretation.append("Perceived as ceremonial or ritual")
 
-c1, c2, c3 = st.columns(3)
-c1.metric("Pulse Density", round(features["tempo"], 2))
-c2.metric("Brightness", round(features["brightness"], 2))
-c3.metric("Timbre", round(features["timbre"], 2))
+    if culture == "Indigenous":
+        interpretation.append("Strong Indigenous identity")
 
-# =========================
-# 🧠 BRAIN MODEL (ALWAYS VISIBLE)
-# =========================
-st.subheader("🧠 Cognitive Brain Model")
+    # =========================
+    # DISPLAY RESULTS
+    # =========================
+    col1, col2 = st.columns(2)
 
-motor = min(features["tempo"] / 200, 1.0)
-auditory = min(features["brightness"] / 20000, 1.0)
-emotion = min(features["timbre"] / 20, 1.0)
+    with col1:
+        st.subheader("🎧 Machine Features")
+        st.write(features)
 
-fig, ax = plt.subplots()
+    with col2:
+        st.subheader("🧍 Human Perception")
+        st.write({
+            "Mood": mood,
+            "Culture": culture,
+            "Rhythm": rhythm_feel,
+            "Emotion": emotion_score
+        })
 
-x = [0.3, 0.6, 0.5]
-y_pos = [0.6, 0.7, 0.3]
-labels = ["Motor", "Auditory", "Emotion"]
-vals = [motor, auditory, emotion]
+    st.subheader("🧠 Interpretation")
+    for i in interpretation:
+        st.write("•", i)
 
-for i in range(3):
-    ax.scatter(x[i], y_pos[i], s=vals[i]*3000 + 200)
-    ax.text(x[i], y_pos[i], labels[i], ha='center')
+    # =========================
+    # BRAIN MODEL (REAL)
+    # =========================
+    st.subheader("🧠 Brain Activation Model")
 
-ax.set_xlim(0,1)
-ax.set_ylim(0,1)
-ax.set_title("Brain Activation Map")
-ax.axis('off')
-
-st.pyplot(fig)
-
-# =========================
-# HUMAN RESPONSE
-# =========================
-st.subheader("👂 Listener Response")
-
-with st.form("listener_form"):
-    groove = st.slider("Groove (felt rhythm)", 0, 100, 50)
-    emotion_human = st.selectbox("Emotion", ["Joy", "Calm", "Energy", "Spiritual"])
-    submit = st.form_submit_button("Submit")
-
-if submit:
-    st.subheader("⚖️ Human vs Machine")
-
-    df = pd.DataFrame({
-        "Aspect": ["Rhythm"],
-        "Machine": [features["tempo"]],
-        "Human": [groove]
+    brain_df = pd.DataFrame({
+        "Region": ["Auditory Cortex", "Motor Cortex", "Limbic System", "Prefrontal Cortex"],
+        "Value": [
+            features["timbre"],
+            features["tempo"],
+            emotion_score,
+            len(interpretation)
+        ]
     })
 
-    st.dataframe(df)
+    fig, ax = plt.subplots()
+    ax.barh(brain_df["Region"], brain_df["Value"])
+    st.pyplot(fig)
 
-# =========================
-# PROCESSING TIME
-# =========================
-st.subheader("⏱ Processing Time")
-st.metric("Seconds", round(st.session_state.processing_time, 2))
+    # =========================
+    # SIDE-BY-SIDE PANEL
+    # =========================
+    st.subheader("🔄 Machine vs Human")
 
-# =========================
-# EXPORT
-# =========================
-st.subheader("📄 Export")
+    compare_df = pd.DataFrame({
+        "Feature": ["Tempo", "Energy", "Brightness"],
+        "Machine": [tempo, rms, centroid],
+        "Human Interpretation": [rhythm_feel, mood, culture]
+    })
 
-export_df = pd.DataFrame({
-    "tempo": [features["tempo"]],
-    "brightness": [features["brightness"]],
-    "timbre": [features["timbre"]],
-    "processing_time": [st.session_state.processing_time]
-})
+    st.dataframe(compare_df)
 
-st.download_button(
-    "Download CSV",
-    export_df.to_csv(index=False),
-    "caribbean_sonic_results.csv"
-)
+    # =========================
+    # RESEARCH MODE
+    # =========================
+    if mode == "Research Mode":
+        st.subheader("📊 Research Mode (Advanced)")
+
+        # 🔥 PCA-like visualization (simple version)
+        data = np.array([tempo, rms, centroid, mfcc])
+        norm = (data - np.mean(data)) / np.std(data)
+
+        fig2, ax2 = plt.subplots()
+        ax2.plot(norm)
+        ax2.set_title("Feature Pattern Signature")
+        st.pyplot(fig2)
+
+        st.write("This represents a simplified feature embedding profile.")
+
+    # =========================
+    # EXPORT
+    # =========================
+    st.subheader("📥 Export Results")
+
+    export_df = pd.DataFrame([{
+        **features,
+        "mood": mood,
+        "culture": culture,
+        "rhythm": rhythm_feel,
+        "emotion": emotion_score
+    }])
+
+    st.download_button("Download CSV", export_df.to_csv(index=False), "results.csv")
