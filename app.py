@@ -58,25 +58,58 @@ def estimate_tempo(signal, sr):
 # =========================
 # MAIN PROCESS
 # =========================
+# =========================
+# FILE UPLOAD
+# =========================
+uploaded_file = st.file_uploader("Upload WAV file", type=["wav"])
+
+# =========================
+# ANALYSIS TRIGGER (PROCESSING BLOCK STARTS HERE)
+# =========================
 if uploaded_file:
+
+    size_mb = uploaded_file.size / (1024 * 1024)
+
+    if size_mb > 10:
+        st.error(f"File too large ({round(size_mb,1)} MB). Please upload under 10MB.")
+        st.stop()
+
+    st.success(f"File uploaded ({round(size_mb,1)} MB)")
 
     if st.button("🔍 Analyze Audio"):
 
-        start = time.time()
+        st.info("Processing...")
+
+        # =====================
+        # 🔥 THIS IS THE CORE PROCESSING BLOCK
+        # =====================
 
         data, sr = sf.read(uploaded_file)
 
+        # Convert stereo → mono
         if len(data.shape) > 1:
             data = np.mean(data, axis=1)
 
+        # Limit to 30 seconds
         data = data[:sr * 30]
 
+        # =====================
         # FEATURES
+        # =====================
         energy = float(np.mean(data**2))
         brightness = float(np.mean(np.abs(np.fft.fft(data))))
         tempo = estimate_tempo(data, sr)
 
-        features = np.array([energy, brightness, tempo])
+        st.success("Processing complete!")
+
+        # =====================
+        # OUTPUT (DISPLAY RESULTS)
+        # =====================
+        st.write({
+            "Energy": energy,
+            "Brightness": brightness,
+            "Tempo": tempo
+        })
 
         # =========================
         # CULTURAL CLASSIFICATION
