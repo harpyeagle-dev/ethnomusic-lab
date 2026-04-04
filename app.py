@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
-st.title("🧠 Music Interpretation Engine")
+st.title("🧠 Caribbean Sonic Humanities Engine")
 
 # =========================
 # 🎧 FILE UPLOAD
@@ -24,6 +24,30 @@ rhythm = st.sidebar.selectbox("Rhythm Feel", ["Steady", "Free", "Dance-like"])
 emotion = st.sidebar.slider("Emotional Intensity", 1, 5, 3)
 
 # =========================
+# 🔥 TEMPO FUNCTION
+# =========================
+def estimate_tempo(signal, sr):
+    diff = np.diff(signal)
+    envelope = np.abs(diff)
+
+    window = int(sr * 0.05)
+    envelope = np.convolve(envelope, np.ones(window)/window, mode='same')
+
+    peaks = np.where(envelope > np.mean(envelope) * 1.5)[0]
+
+    if len(peaks) < 2:
+        return 60
+
+    intervals = np.diff(peaks) / sr
+    avg_interval = np.mean(intervals)
+
+    if avg_interval == 0:
+        return 60
+
+    bpm = 60 / avg_interval
+    return float(min(max(bpm, 40), 200))
+
+# =========================
 # PROCESS AUDIO
 # =========================
 if uploaded_file:
@@ -39,7 +63,7 @@ if uploaded_file:
         if len(data.shape) > 1:
             data = np.mean(data, axis=1)
 
-        # Limit to 30 sec
+        # Limit length (FAST)
         data = data[:samplerate * 30]
 
         # =====================
@@ -47,12 +71,12 @@ if uploaded_file:
         # =====================
         energy = float(np.mean(data**2))
         brightness = float(np.mean(np.abs(np.fft.fft(data))))
-        duration = len(data) / samplerate
+        tempo = estimate_tempo(data, samplerate)
 
         features = {
-            "Energy": energy,
-            "Brightness": brightness,
-            "Duration": duration
+            "Energy": round(energy, 4),
+            "Brightness": round(brightness, 2),
+            "Tempo (BPM)": round(tempo, 1)
         }
 
         # =====================
@@ -61,7 +85,7 @@ if uploaded_file:
         interpretation = []
 
         if energy > 0.05:
-            interpretation.append("High energy — likely expressive or dance-driven")
+            interpretation.append("High energy — expressive or dance-driven")
         else:
             interpretation.append("Low energy — calm or reflective")
 
@@ -70,14 +94,19 @@ if uploaded_file:
         else:
             interpretation.append("Bright / sharp tonal quality")
 
+        if tempo > 120:
+            interpretation.append("Fast tempo — dance or high activity")
+        elif tempo < 80:
+            interpretation.append("Slow tempo — ceremonial or reflective")
+
         if mood == "Spiritual":
-            interpretation.append("Listener perceives ceremonial or ritual elements")
+            interpretation.append("Perceived as ceremonial or ritual")
 
         if culture == "Indigenous":
             interpretation.append("Strong Indigenous cultural identity")
 
         # =====================
-        # DISPLAY
+        # DISPLAY PANELS
         # =====================
         col1, col2 = st.columns(2)
 
@@ -94,6 +123,9 @@ if uploaded_file:
                 "Emotion": emotion
             })
 
+        # =====================
+        # INTERPRETATION OUTPUT
+        # =====================
         st.subheader("🧠 Interpretation")
         for i in interpretation:
             st.write("•", i)
@@ -106,8 +138,8 @@ if uploaded_file:
         brain_df = pd.DataFrame({
             "Region": ["Auditory Cortex", "Motor Cortex", "Limbic System", "Prefrontal Cortex"],
             "Value": [
-                features["Brightness"],
-                features["Energy"],
+                brightness,
+                tempo,
                 emotion,
                 len(interpretation)
             ]
@@ -115,6 +147,7 @@ if uploaded_file:
 
         fig, ax = plt.subplots()
         ax.barh(brain_df["Region"], brain_df["Value"])
+        ax.set_xlabel("Activation Level")
         st.pyplot(fig)
 
         # =====================
@@ -123,9 +156,9 @@ if uploaded_file:
         st.subheader("🔄 Machine vs Human")
 
         compare_df = pd.DataFrame({
-            "Feature": ["Energy", "Brightness"],
-            "Machine": [energy, brightness],
-            "Human Interpretation": [mood, culture]
+            "Feature": ["Energy", "Brightness", "Tempo"],
+            "Machine": [energy, brightness, tempo],
+            "Human Interpretation": [mood, culture, rhythm]
         })
 
         st.dataframe(compare_df)
