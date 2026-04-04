@@ -19,9 +19,24 @@ rhythm = st.sidebar.selectbox("Rhythm Feel", ["Steady", "Free", "Dance-like"])
 emotion = st.sidebar.slider("Emotional Intensity", 1, 5, 3)
 
 # =========================
-# 🎧 FILE UPLOAD (ONLY ONE)
+# 🧠 FORM (UPLOAD + QUESTIONS TOGETHER)
 # =========================
-uploaded_file = st.file_uploader("Upload WAV file (max 10MB)", type=["wav"], key="upload1")
+with st.form("analysis_form"):
+
+    st.subheader("🎧 Upload & Perception")
+
+    uploaded_file = st.file_uploader(
+        "Upload WAV file (max 10MB, <30 sec recommended)",
+        type=["wav"]
+    )
+
+    # QUESTIONS
+    mood = st.selectbox("Mood", ["Calm", "Energetic", "Sad", "Spiritual", "Aggressive"])
+    culture = st.selectbox("Cultural Feel", ["Indigenous", "Western", "Fusion", "Unknown"])
+    rhythm = st.selectbox("Rhythm Feel", ["Steady", "Free", "Dance-like"])
+    emotion = st.slider("Emotional Intensity", 1, 5, 3)
+
+    submit = st.form_submit_button("🔍 Analyze Audio")
 
 # =========================
 # 🔥 TEMPO FUNCTION
