@@ -65,29 +65,28 @@ def estimate_tempo(signal, sr):
 # =========================
 # 🚀 PROCESSING BLOCK
 # =========================
-if uploaded_file:
+
+if submit:
+
+    if uploaded_file is None:
+        st.error("Please upload a file first.")
+        st.stop()
 
     size_mb = uploaded_file.size / (1024 * 1024)
 
     if size_mb > 10:
-        st.error(f"File too large ({round(size_mb,1)} MB). Please upload under 10MB.")
+        st.error(f"File too large ({round(size_mb,1)} MB). Use <10MB.")
         st.stop()
 
-    st.success(f"File uploaded ({round(size_mb,1)} MB)")
+    st.success(f"File ready ({round(size_mb,1)} MB)")
 
-    if st.button("🔍 Analyze Audio"):
+    with st.spinner("Processing audio..."):
 
-        start = time.time()
-        st.info("Processing...")
-
-        # LOAD AUDIO
         data, sr = sf.read(uploaded_file)
 
-        # MONO
         if len(data.shape) > 1:
             data = np.mean(data, axis=1)
 
-        # LIMIT LENGTH
         data = data[:sr * 30]
 
         # =====================
