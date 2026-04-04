@@ -5,6 +5,42 @@ import pandas as pd
 import time
 import plotly.graph_objects as go
 
+from pydub import AudioSegment
+import tempfile
+
+def load_audio(file):
+    file_type = file.name.split(".")[-1].lower()
+
+    if file_type == "wav":
+        data, sr = sf.read(file)
+        return data, sr
+
+    elif file_type == "mp3":
+        try:
+            # Save temp file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                tmp.write(file.read())
+                tmp_path = tmp.name
+
+            audio = AudioSegment.from_mp3(tmp_path)
+            samples = np.array(audio.get_array_of_samples()).astype(np.float32)
+
+            if audio.channels == 2:
+                samples = samples.reshape((-1, 2))
+                samples = samples.mean(axis=1)
+
+            sr = audio.frame_rate
+
+            return samples, sr
+
+        except Exception as e:
+            st.error("MP3 processing failed. Try WAV or smaller MP3.")
+            st.stop()
+
+    else:
+        st.error("Unsupported format")
+        st.stop()
+
 st.set_page_config(layout="wide")
 st.title("🧠 Caribbean Sonic Humanities Engine")
 
@@ -26,8 +62,9 @@ with st.form("analysis_form"):
     st.subheader("🎧 Upload & Perception")
 
     uploaded_file = st.file_uploader(
-        "Upload WAV file (max 10MB, <30 sec recommended)",
-        type=["wav"]
+    "Upload Audio (MP3 or WAV, max 10MB)",
+    type=["wav", "mp3"],
+    key="upload1"
     )
 
     # QUESTIONS
@@ -87,7 +124,7 @@ if submit:
         if len(data.shape) > 1:
             data = np.mean(data, axis=1)
 
-        data = data[:sr * 30]
+        data, sr = load_audio(uploaded_file)
 
         # =====================
         # FEATURES
