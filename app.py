@@ -4,17 +4,18 @@ import soundfile as sf
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
-st.title("🧠 Caribbean Sonic Humanities Engine")
+st.title("🧠 Caribbean Sonic Humanities Engine (Advanced)")
 
 # =========================
-# 🎧 FILE UPLOAD
+# FILE UPLOAD
 # =========================
 uploaded_file = st.file_uploader("Upload WAV file", type=["wav"])
 
 # =========================
-# 🧍 HUMAN QUESTIONNAIRE
+# HUMAN INPUT
 # =========================
 st.sidebar.header("🧍 Listener Perception")
 
@@ -24,15 +25,13 @@ rhythm = st.sidebar.selectbox("Rhythm Feel", ["Steady", "Free", "Dance-like"])
 emotion = st.sidebar.slider("Emotional Intensity", 1, 5, 3)
 
 # =========================
-# 🔥 TEMPO FUNCTION
+# TEMPO FUNCTION
 # =========================
 def estimate_tempo(signal, sr):
     diff = np.diff(signal)
     envelope = np.abs(diff)
-
     window = int(sr * 0.05)
     envelope = np.convolve(envelope, np.ones(window)/window, mode='same')
-
     peaks = np.where(envelope > np.mean(envelope) * 1.5)[0]
 
     if len(peaks) < 2:
@@ -48,7 +47,7 @@ def estimate_tempo(signal, sr):
     return float(min(max(bpm, 40), 200))
 
 # =========================
-# PROCESS AUDIO
+# MAIN PROCESS
 # =========================
 if uploaded_file:
 
@@ -56,115 +55,80 @@ if uploaded_file:
 
         start = time.time()
 
-        # Load audio
-        data, samplerate = sf.read(uploaded_file)
+        data, sr = sf.read(uploaded_file)
 
-        # Convert to mono
         if len(data.shape) > 1:
             data = np.mean(data, axis=1)
 
-        # Limit length (FAST)
-        data = data[:samplerate * 30]
+        data = data[:sr * 30]
 
-        # =====================
-        # MACHINE FEATURES
-        # =====================
+        # FEATURES
         energy = float(np.mean(data**2))
         brightness = float(np.mean(np.abs(np.fft.fft(data))))
-        tempo = estimate_tempo(data, samplerate)
+        tempo = estimate_tempo(data, sr)
 
-        features = {
-            "Energy": round(energy, 4),
-            "Brightness": round(brightness, 2),
-            "Tempo (BPM)": round(tempo, 1)
-        }
+        features = np.array([energy, brightness, tempo])
 
-        # =====================
-        # INTERPRETATION ENGINE
-        # =====================
-        interpretation = []
-
-        if energy > 0.05:
-            interpretation.append("High energy — expressive or dance-driven")
+        # =========================
+        # CULTURAL CLASSIFICATION
+        # =========================
+        if energy < 0.04 and tempo < 90:
+            classification = "Indigenous / Ceremonial"
+        elif energy > 0.08 and tempo > 110:
+            classification = "Western / Popular"
         else:
-            interpretation.append("Low energy — calm or reflective")
+            classification = "Hybrid / Fusion"
 
-        if brightness < 100:
-            interpretation.append("Warm / traditional tonal quality")
-        else:
-            interpretation.append("Bright / sharp tonal quality")
-
-        if tempo > 120:
-            interpretation.append("Fast tempo — dance or high activity")
-        elif tempo < 80:
-            interpretation.append("Slow tempo — ceremonial or reflective")
-
-        if mood == "Spiritual":
-            interpretation.append("Perceived as ceremonial or ritual")
-
-        if culture == "Indigenous":
-            interpretation.append("Strong Indigenous cultural identity")
-
-        # =====================
-        # DISPLAY PANELS
-        # =====================
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader("🎧 Machine Features")
-            st.write(features)
-
-        with col2:
-            st.subheader("🧍 Human Perception")
-            st.write({
-                "Mood": mood,
-                "Culture": culture,
-                "Rhythm": rhythm,
-                "Emotion": emotion
-            })
-
-        # =====================
-        # INTERPRETATION OUTPUT
-        # =====================
-        st.subheader("🧠 Interpretation")
-        for i in interpretation:
-            st.write("•", i)
-
-        # =====================
-        # 🧠 BRAIN MODEL
-        # =====================
-        st.subheader("🧠 Brain Activation Model")
-
-        brain_df = pd.DataFrame({
-            "Region": ["Auditory Cortex", "Motor Cortex", "Limbic System", "Prefrontal Cortex"],
-            "Value": [
-                brightness,
-                tempo,
-                emotion,
-                len(interpretation)
-            ]
+        # =========================
+        # DISPLAY
+        # =========================
+        st.subheader("🎧 Features")
+        st.write({
+            "Energy": energy,
+            "Brightness": brightness,
+            "Tempo": tempo
         })
 
-        fig, ax = plt.subplots()
-        ax.barh(brain_df["Region"], brain_df["Value"])
-        ax.set_xlabel("Activation Level")
-        st.pyplot(fig)
+        st.subheader("🌍 Cultural Classification")
+        st.success(classification)
 
-        # =====================
-        # 🔄 MACHINE VS HUMAN
-        # =====================
-        st.subheader("🔄 Machine vs Human")
+        # =========================
+        # 🧠 3D BRAIN MODEL
+        # =========================
+        st.subheader("🧠 3D Brain Model")
 
-        compare_df = pd.DataFrame({
-            "Feature": ["Energy", "Brightness", "Tempo"],
-            "Machine": [energy, brightness, tempo],
-            "Human Interpretation": [mood, culture, rhythm]
-        })
+        brain_x = [1, 2, 3, 4]
+        brain_y = [2, 1, 3, 2]
+        brain_z = [energy, tempo/100, emotion, len(features)]
 
-        st.dataframe(compare_df)
+        labels = ["Auditory", "Motor", "Limbic", "Cognitive"]
 
-        # =====================
-        # ⏱ PROCESS TIME
-        # =====================
+        fig = go.Figure(data=[go.Scatter3d(
+            x=brain_x,
+            y=brain_y,
+            z=brain_z,
+            mode='markers+text',
+            text=labels,
+            marker=dict(size=10)
+        )])
+
+        fig.update_layout(title="Brain Activation Map")
+        st.plotly_chart(fig)
+
+        # =========================
+        # 🔬 RESEARCH MODE
+        # =========================
+        st.subheader("🔬 Feature Embedding")
+
+        normalized = (features - np.mean(features)) / np.std(features)
+
+        fig2, ax2 = plt.subplots()
+        ax2.plot(normalized, marker='o')
+        ax2.set_title("Feature Signature (Embedding Proxy)")
+        st.pyplot(fig2)
+
+        # =========================
+        # ⏱ TIME
+        # =========================
         end = time.time()
         st.write(f"⏱ Processing time: {round(end - start, 2)} sec")
