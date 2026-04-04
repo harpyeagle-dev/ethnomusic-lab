@@ -14,6 +14,15 @@ st.title("🧠 Caribbean Sonic Humanities Engine (Advanced)")
 # =========================
 uploaded_file = st.file_uploader("Upload WAV file", type=["wav"])
 
+if uploaded_file is not None:
+    size_mb = uploaded_file.size / (1024 * 1024)
+
+    if size_mb > 10:
+        st.error(f"File too large ({round(size_mb,1)} MB). Please upload under 10MB.")
+        st.stop()
+
+    st.success(f"File uploaded ({round(size_mb,1)} MB)")
+
 # =========================
 # HUMAN INPUT
 # =========================
