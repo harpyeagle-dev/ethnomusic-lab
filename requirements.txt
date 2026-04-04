@@ -1,6 +1,5 @@
 streamlit
 numpy
 soundfile
-matplotlib
 plotly
-pydub
+matplotlib
