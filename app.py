@@ -5,7 +5,6 @@ import pandas as pd
 import time
 import plotly.graph_objects as go
 
-from pydub import AudioSegment
 import tempfile
 
 def load_audio(file):
